@@ -10,8 +10,9 @@ import matplotlib.pyplot as plt
 import cv2
 import numpy as np
 from numpy import array,argmin
-
+import pickle
 import torch
+from shutil import copyfile
 
 def mkdir_if_missing(directory):
     if not osp.exists(directory):
@@ -20,6 +21,87 @@ def mkdir_if_missing(directory):
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
+
+def dict_key_slice(ori_dict, start, end):
+    """
+    dict slice according to the key
+    :param ori_dict: original dict
+    :param start: start idx
+    :param end: end idx
+    :return: slice dict
+    """
+    if end != -1:
+        slice_dict = {k: ori_dict[k] for k in list(ori_dict.keys())[start:end]}
+    else:
+        slice_dict = {k: ori_dict[k] for k in list(ori_dict.keys())[start:]}
+    return slice_dict
+
+
+def dict_value_slice(ori_dict,st,ed):
+    """
+    dict slice according to the value
+    the original dict value could be sliced
+    :param ori_dict: original dict
+    :param st: start idx
+    :param ed: end idx
+    :return: slice dict
+    """
+    slice_dict = {}
+    for item in ori_dict.items():
+        vid = item[0]
+        vnames = item[1]
+        tmp_name = []
+        for i in range(st,ed):
+            tmp_name.append(vnames[i])
+        slice_dict[vid] = tmp_name
+    return slice_dict
+
+
+def write_pickle(download_path):
+    if not os.path.isdir(download_path):
+        print('please change the download_path')
+
+    train_label = download_path + '/train_label.csv'
+    tnames = {}
+    tnames_p = open('tnames.pkl','wb')
+
+    # for root, dirs, files in os.walk(train_path, topdown=True):
+    with open(train_label,'r') as f:
+        for line in f.readlines():
+            tname = line.strip('\n').split(',')
+            vid = tname[0]
+            timg = [tname[1]] 
+            if vid in tnames:
+                tnames[vid] += timg
+            else:
+                tnames[vid] = timg
+        pickle.dump(tnames,tnames_p)
+        tnames_p.close()
+        f.close()
+
+
+def copy_ori2dst(ori_dict,ori_path,save_path):
+    """
+    copy ori folder to destination folder
+    :param ori_dict: original dict
+    :param ori_path: the original path 
+    :param save_path: the final path which is going to be saved
+    :return: none
+    """
+    if not os.path.isdir(save_path):
+        os.mkdir(save_path)
+
+    for item in ori_dict.items():
+        tvid = item[0]
+        timgs = item[1]
+        # print(timgs)
+        for timg in timgs:
+            src_path = ori_path + '/' + timg
+            dst_path = save_path + '/' + tvid
+            if not os.path.isdir(dst_path):
+                os.mkdir(dst_path)
+            copyfile(src_path, dst_path + '/' + timg)
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value.

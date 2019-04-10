@@ -9,14 +9,15 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from torchvision import datasets
 import torch.backends.cudnn as cudnn
 from torch.optim import lr_scheduler
 
 import models
 from util.losses import CrossEntropyLoss, DeepSupervision, CrossEntropyLabelSmooth, TripletLossAlignedReID
-from util import data_manager
+# from util import data_manager
 from util import transforms as T
-from util.dataset_loader import ImageDataset,ImageDatasetCa
+#from util.dataset_loader import ImageDataset,ImageDatasetCa
 from util.utils import Logger
 from util.utils import AverageMeter, Logger, save_checkpoint
 from util.eval_metrics import evaluate
@@ -28,10 +29,6 @@ from IPython import embed
 parser = argparse.ArgumentParser(description='Train AlignedReID with cross entropy loss and triplet hard loss')
 # Datasets
 parser.add_argument('--root', type=str, default='../data', help="root path to data directory")
-parser.add_argument('-d', '--dataset', type=str, default='aiCityVeRi',
-                    choices=data_manager.get_names())
-parser.add_argument('-dt', '--dataset_t',type=str, default='VeRi',
-                    choices=data_manager.get_names())
 parser.add_argument('-j', '--workers', default=4, type=int,
                     help="number of data loading workers (default: 4)")
 parser.add_argument('--height', type=int, default=256,
@@ -86,6 +83,7 @@ parser.add_argument('--unaligned',action= 'store_true', help= 'test local featur
 
 parser.add_argument('--share_conv', action='store_true',default=False)
 parser.add_argument('--stripes', type=int, default=4)
+parser.add_argument('--train_all',action='store_true',default=False)
 
 args = parser.parse_args()
 
@@ -108,17 +106,10 @@ def main():
     else:
         print("Currently using CPU (GPU is highly recommended)")
 
-    print("Initializing dataset {}".format(args.dataset))
-    dataset = data_manager.init_img_dataset(
-        root=args.root, name=args.dataset, split_id=args.split_id,
-    )
-
-    dataset_t = data_manager.init_img_dataset(
-        root=args.root, name=args.dataset_t, split_id=args.split_id,
-    )
-
-    print('dataset',dataset)
-    print('dataset_test',dataset_t)
+    train_all = ''
+    if args.train_all:
+        train_all = '_all'
+    
     # data augmentation
     transform_train = T.Compose([
         T.Random2DTranslation(args.height, args.width),
@@ -135,35 +126,46 @@ def main():
         T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
+    image_datasets = {}
+
+    image_datasets['train'] = datasets.ImgaeFolder(os.path.join(data_dir,'train'+train_all),
+                                                    transform_train)
+    image_datasets['query'] = datasets.ImgaeFolder(os.path.join(data_dir,'query'),
+                                                    transform_test)    
+    image_datasets['gallery'] = datasets.ImgaeFolder(os.path.join(data_dir,'gallery'),
+                                                    transform_test)
+
+    class_names = image_datasets['train'].classes
+    
     trainloader = DataLoader(
-        ImageDataset(dataset.train, transform=transform_train),
-        sampler=RandomIdentitySampler(dataset.train, num_instances=args.num_instances),
+        image_datasets['train'],
+        sampler=RandomIdentitySampler(image_datasets['train'], num_instances=args.num_instances),
 		batch_size=args.train_batch, num_workers=args.workers,
         pin_memory=pin_memory, drop_last=True,
     )
     
     print('len of trainloader',len(trainloader))
     queryloader = DataLoader(
-        ImageDatasetCa(dataset_t.query, transform=transform_test),
+        image_datasets['query'],
         batch_size=args.test_batch, shuffle=False, num_workers=args.workers,
         pin_memory=pin_memory, drop_last=False,
     )
 
     print('len of queryloader',len(queryloader))
     galleryloader = DataLoader(
-        ImageDatasetCa(dataset_t.gallery, transform=transform_test),
+        image_datasets['gallery'],
         batch_size=args.test_batch, shuffle=False, num_workers=args.workers,
         pin_memory=pin_memory, drop_last=False,
     )
 
     print('len of galleryloader',len(galleryloader))
     print("Initializing model: {}".format(args.arch))
-    model = models.init_model(name=args.arch, num_classes=dataset.num_train_vids, num_stripes=args.stripes, share_conv=args.share_conv,return_features=args.return_features)
+    model = models.init_model(name=args.arch, num_classes=len(class_names), num_stripes=args.stripes, share_conv=args.share_conv,return_features=args.return_features)
     print("Model size: {:.5f}M".format(sum(p.numel() for p in model.parameters())/1000000.0))
     print('Model ',model)
-    print('num_classes',dataset.num_train_vids)
+    print('num_classes',len(class_names))
     if args.labelsmooth:
-        criterion_class = CrossEntropyLabelSmooth(num_classes=dataset.num_train_vids, use_gpu=use_gpu)
+        criterion_class = CrossEntropyLabelSmooth(num_classes=len(class_names), use_gpu=use_gpu)
     else:
         # criterion_class = CrossEntropyLoss(use_gpu=use_gpu)
         criterion_class = nn.CrossEntropyLoss()
