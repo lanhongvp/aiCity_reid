@@ -113,23 +113,25 @@ class aiCityVeRi(object):
         # vehicles: 333（train）+ 333（test）
         # images: 36953 (train) + 18290 (test) + 1052(query)
         """
-    dataset_dir = 'aiCity'
+    dataset_dir = 'aiCity_s'
 
     def __init__(self, root='../../lan_reid/data', **kwargs):
         self.dataset_dir = osp.join(root, self.dataset_dir)
         self.dataset_dir = osp.abspath(self.dataset_dir)
         #embed()
         self.train_dir = osp.join(self.dataset_dir, 'image_train')
+        self.train_dir_all = osp.join(self.dataset_dir,'image_train_all')
         self.query_dir = osp.join(self.dataset_dir, 'image_query')
         self.gallery_dir = osp.join(self.dataset_dir, 'image_test')
         # self.label_dir = self.dataset_dir + 'train_label.csv'
         self._check_before_run()
 
         train, num_train_vids, num_train_imgs = self._process_dir(self.train_dir,is_train=True,relabel=True)
+        train_all,num_train_vids_all,num_train_imgs_all = self._process_dir(self.train_dir_all,is_train=True,relabel=True)
         query, num_query_vids, num_query_imgs = self._process_dir(self.query_dir,is_train=False)
-        gallery, num_gallery_vids, num_gallery_imgs = self._process_dir(self.gallery_dir,is_train=False,is_track=True)
-        # num_total_pids = num_train_vids + num_query_vids
-        num_total_pids = 666
+        gallery, num_gallery_vids, num_gallery_imgs = self._process_dir(self.gallery_dir,is_train=False)
+        num_total_pids = num_train_vids + num_query_vids
+        #num_total_pids = 666
         num_total_imgs = num_train_imgs + num_query_imgs + num_gallery_imgs
 
         print("=> aiCityVeRi 666 loaded")
@@ -145,10 +147,12 @@ class aiCityVeRi(object):
         print("  ------------------------------")
 
         self.train = train
+        self.train_all = train_all
         self.query = query
         self.gallery = gallery
 
         self.num_train_vids = num_train_vids
+        self.num_train_vids_all = num_train_vids_all
         self.num_query_vids = num_query_vids
         self.num_gallery_vids = num_gallery_vids
 
@@ -158,6 +162,8 @@ class aiCityVeRi(object):
             raise RuntimeError("'{}' is not available".format(self.dataset_dir))
         if not osp.exists(self.train_dir):
             raise RuntimeError("'{}' is not available".format(self.train_dir))
+        if not osp.exists(self.train_dir_all):
+            raise RuntimeError("'{}' is not available".format(self.train_dir_all))
         if not osp.exists(self.query_dir):
             raise RuntimeError("'{}' is not available".format(self.query_dir))
         if not osp.exists(self.gallery_dir):
@@ -173,7 +179,29 @@ class aiCityVeRi(object):
 
         return label, num_id
 
-    def _process_dir(self,dir_path,is_train=True,relabel=False,is_track=False):
+    def _process_dir(self,dir_path, is_train=True, relabel=False):
+        img_paths = glob.glob(osp.join(dir_path, '*.jpg'))
+
+        vid_list = []
+        for img_path in img_paths:
+            veid = int(img_path.split('/')[-1].split('_')[0])
+            vid_list.append(veid)
+
+        vlabel, num_vids = self.vid2label(vid_list)
+
+        dataset = []
+        count = 0
+        for img_path in img_paths:
+            vid = vid_list[count]
+            if relabel:
+                vid = vlabel[count]
+            dataset.append((img_path, vid))
+            count = count + 1
+        #embed()
+        num_imgs = len(dataset)
+        return dataset, num_vids, num_imgs
+
+    def _process_dir_(self,dir_path,is_train=True,relabel=False,is_track=False):
         img_paths = glob.glob(osp.join(dir_path, '*.jpg'))
         label_dir = self.dataset_dir + '/train_label.csv'
         test_track_dir = self.dataset_dir + '/test_track.txt'

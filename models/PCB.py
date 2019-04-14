@@ -90,20 +90,21 @@ class PCBModel(nn.Module):
         self.return_features = option
 
 class DensePCB(nn.Module):
-    def __init__(self,num_classes=100,num_stripes=4,share_conv=True,return_features=False,global_feat=False,**kwargs):
+    def __init__(self,num_classes=100,num_stripes=4,share_conv=True,use_pcb=False,**kwargs):
 
         super(DensePCB,self).__init__()
         self.num_stripes = num_stripes
         self.num_classes = num_classes
         self.share_conv = share_conv
-        self.return_features = return_features
+        self.use_pcb = use_pcb
 
         densenet121 = models.densenet121(pretrained=True)
         self.classifier = nn.Linear(1024,num_classes)
 
         self.backbone = densenet121.features
         self.avgpool = nn.AdaptiveAvgPool2d((self.num_stripes,1))
-
+        
+        self.dropout = nn.Dropout(p=0.5)
         if share_conv:
             self.local_conv = nn.Sequential(
                 nn.Con2d(1024,256,kernel_size=1),
@@ -131,12 +132,18 @@ class DensePCB(nn.Module):
         densenet_features = self.backbone(x)
         g_features = F.avg_pool2d(densenet_features,densenet_features.size()[2:])
         gf = g_features.view(g_features.size(0),-1) #turn to 2d torch arr
+        
         gf_out = self.classifier(gf)
-
         # [N, C, H, W]
         assert densenet_features.size(
             2) % self.num_stripes == 0, 'Image height cannot be divided by num_strides'
+        # global features
         features_G = self.avgpool(densenet_features)
+        if self.training:
+            features_G = self.dropout(features_G)
+        #embed()
+        #gf_ = features_G.view(features_G.size(0),-1) 
+        #gf_out_ = self.classifier(gf_)
 
         # [N, C=256, H=S, W=1]
         if self.share_conv:
@@ -152,20 +159,27 @@ class DensePCB(nn.Module):
                 features_H.append(stripe_features_H)
 
         # Return the features_H
-        if self.return_features:
+        if self.use_pcb:
             feat_pcb = torch.stack(features_H, dim=2)
-            #feat_pcb = feat_pcb.view(feat_pcb.size()[0:3])
+            feat_pcb = feat_pcb.view(feat_pcb.size()[0:3])
             #feat_pcb = feat_pcb/torch.pow(feat_pcb,2).sum(dim=1,keepdim=True).clamp(min=1e-12).sqrt()
         # [N, C=num_classes]
         batch_size = x.size(0)
         logits_list = [self.fc_list[i](features_H[i].view(batch_size, -1))
                        for i in range(self.num_stripes)]
-        #embed()        
+        #embed()  
+          
         if self.training:
-            return logits_list,gf_out
+            if self.use_pcb:
+                return logits_list,gf_out,feat_pcb,gf
+            elif not self.use_pcb:
+                return gf_out,gf
         elif not self.training:
-            return logits_list,feat_pcb,gf
-
+            if self.use_pcb:
+                return feat_pcb,gf
+            elif not self.use_pcb:
+                return gf
+                
     def set_return_features(self, option):
         self.return_features = option
 
