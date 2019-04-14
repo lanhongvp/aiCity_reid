@@ -40,6 +40,7 @@
 ### 数据准备
 ### 1 python prepare_data.py
 - 此脚本将原始数据划分为train/val/train_all
+    - 其中将原始train中333ID的车辆数据集，划出30个ID作为验证集
 - 将原图片`imgname.jpg`重命名为`vid_imgname.jpg`
 - 运行脚本，处理原始数据(默认路径`data/aiCity`)，将处理之后的数据存放于`data/aiCity_s`
     - image_train
