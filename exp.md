@@ -194,6 +194,7 @@
 ### 3.3[PCB] lf+gf -- re-ranking + test_track
 #### 3.3.1 backbone
 - densenet121
+- PCB
 - **256 X 256**
 #### 3.3.2 loss
 - softmax loss
@@ -275,13 +276,13 @@
 #### 4.2.4 初始学习率/调整步骤
 - 同1.2 exp1_2(lr=0.0003)
 - 同1.1 exp1_1(lr=0.0002)
-#### 4.2.5.1 aiCity验证结果(30ID验证,only gfi,epoch=25) 
+#### 4.2.5.1 aiCity验证结果(30ID验证,gf_dense121,epoch=25) 
 - mAP: 0.781
 - cmc1: 1.00
 - cmc5: 1.00
 - cmc10: 1.00
 - cmc20: 1.00
-#### 4.2.5.2 aiCity验证结果(30ID验证,gf and lf,epoch=10) 
+#### 4.2.5.2 aiCity验证结果(30ID验证,gf_lf+densepcb121,epoch=10) 
 - mAP: 0.792
 - cmc1: 1.00
 - cmc5: 1.00
@@ -300,14 +301,14 @@
 - dropout(0.5)
 #### 5.1.4 初始学习率/调整步骤
 - 同 exp1_1(lr=0.0002)
-#### 5.1.5 aiCity验证结果(30ID验证) 
+#### 5.1.5 aiCity验证结果(30ID验证,gf_lf+densepcb121) 
 - mAP: 0.3011
 - cmc1: 0.4438
 - cmc5: 0.4438
 - cmc10: 0.4457
 - cmc20: 0.4705
 ### 5.2 triplet loss实验 gf+lf --reranking + test_track
-#### 5.1.1 backbone
+#### 5.2.1 backbone
 - densenet121
 - pcb
 #### 5.1.2 loss
