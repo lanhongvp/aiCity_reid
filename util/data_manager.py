@@ -258,6 +258,134 @@ class aiCityVeRi(object):
             num_imgs = len(dataset)
         return dataset, num_vids, num_imgs
 
+class aiCityVeRi_t(object):
+    """
+        AiCity_VeRi
+
+        Reference:
+        Liu et al. Large-scale vehicle re-identification in urban surveillance videos. ICME 2016.
+
+        Dataset statistics:
+        # vehicles: 333（train）+ 333（test）
+        # images: 36953 (train) + 18290 (test) + 1052(query)
+        """
+    dataset_dir = 'aiCity'
+
+    def __init__(self, root='../../lan_reid/data', **kwargs):
+        self.dataset_dir = osp.join(root, self.dataset_dir)
+        self.dataset_dir = osp.abspath(self.dataset_dir)
+        #embed()
+        self.train_dir = osp.join(self.dataset_dir, 'image_train')
+        self.query_dir = osp.join(self.dataset_dir, 'image_query')
+        self.gallery_dir = osp.join(self.dataset_dir, 'image_test')
+        # self.label_dir = self.dataset_dir + 'train_label.csv'
+        self._check_before_run()
+
+        train, num_train_vids, num_train_imgs = self._process_dir(self.train_dir,is_train=True,relabel=True)
+        query, num_query_vids, num_query_imgs = self._process_dir(self.query_dir,is_train=False)
+        gallery, num_gallery_vids, num_gallery_imgs = self._process_dir(self.gallery_dir,is_train=False,is_track=True)
+        # num_total_pids = num_train_vids + num_query_vids
+        num_total_pids = 666
+        num_total_imgs = num_train_imgs + num_query_imgs + num_gallery_imgs
+
+        print("=> aiCityVeRi 666 loaded")
+        print("Dataset statistics:")
+        print("  ------------------------------")
+        print("  subset   | # ids | # images")
+        print("  ------------------------------")
+        print("  train    | {:5d} | {:8d}".format(num_train_vids, num_train_imgs))
+        print("  query    | {:5d} | {:8d}".format(num_query_vids, num_query_imgs))
+        print("  gallery  | {:5d} | {:8d}".format(num_gallery_vids, num_gallery_imgs))
+        print("  ------------------------------")
+        print("  total    | {:5d} | {:8d}".format(num_total_pids, num_total_imgs))
+        print("  ------------------------------")
+
+        self.train = train
+        self.query = query
+        self.gallery = gallery
+
+        self.num_train_vids = num_train_vids
+        self.num_query_vids = num_query_vids
+        self.num_gallery_vids = num_gallery_vids
+
+    def _check_before_run(self):
+        """Check if all files are available before going deeper"""
+        if not osp.exists(self.dataset_dir):
+            raise RuntimeError("'{}' is not available".format(self.dataset_dir))
+        if not osp.exists(self.train_dir):
+            raise RuntimeError("'{}' is not available".format(self.train_dir))
+        if not osp.exists(self.query_dir):
+            raise RuntimeError("'{}' is not available".format(self.query_dir))
+        if not osp.exists(self.gallery_dir):
+            raise RuntimeError("'{}' is not available".format(self.gallery_dir))
+
+    def vid2label(self,id):
+        sort_id = list(set(id))
+        sort_id.sort()
+        num_id = len(sort_id)
+        label = []
+        for x in id:
+            label.append(sort_id.index(x))
+
+        return label, num_id
+
+    def _process_dir(self,dir_path,is_train=True,relabel=False,is_track=False):
+        img_paths = glob.glob(osp.join(dir_path, '*.jpg'))
+        label_dir = self.dataset_dir + '/train_label.csv'
+        test_track_dir = self.dataset_dir + '/test_track.txt'
+        train_track_dir = self.dataset_dir + '/train_track.txt'
+
+        vid_list = []
+        if is_train and not is_track:
+            train_label = open(label_dir)
+            # cid_list = []
+            img_tnames = []
+            for line in train_label.readlines():
+                vid = int(line.strip('.jpg').split(',')[0])
+                img_tname = osp.join(dir_path,line.split(',')[1]).strip()
+                # caid = int(img_path.split(osp.sep)[-1].split('.')[0].split('_')[1][1:])
+                vid_list.append(vid)
+                img_tnames.append(img_tname)
+                # cid_list.append(caid)
+
+            vlabel, num_vids = self.vid2label(vid_list)
+
+            dataset = []
+            count = 0
+            for img_path in img_paths:
+                #print('img_path',img_path)
+                vid = vid_list[count]
+                # cid = cid_list[count]
+                if relabel:
+                    vid = vlabel[count]
+                dataset.append((img_tnames[count], vid))
+#embed()
+                count = count + 1
+            # print('dataset\n',(dataset))
+            num_imgs = len(dataset)
+        elif not is_train and  not is_track :
+            dataset = []
+            count = 0
+            for img_path in img_paths:
+                dataset.append(img_path)
+                count = count + 1
+            num_imgs = len(dataset)
+            num_vids = -1
+            # print(dataset)
+        elif not is_train and is_track:
+            test_tracks = open(test_track_dir)
+            dataset = []
+        
+            for test_track in test_tracks.readlines():
+                test_track = test_track.split()
+                test_track_ids = list(map(lambda track_id_:dir_path+'/'+track_id_,test_track))
+                for t_id_dir in test_track_ids:
+                    dataset.append(t_id_dir)
+            # print('gallery track id',(dataset[0]))
+            num_vids = -1
+            num_imgs = len(dataset)
+        return dataset, num_vids, num_imgs
+
 
 class VeRi(object):
     """
@@ -1534,6 +1662,7 @@ __img_factory = {
     'VehicleID': VehicleID,
     'aiCityVeRi':aiCityVeRi,
     'VeRi':VeRi,
+    'aiCityTest':aiCityVeRi_t,
 }
 
 __vid_factory = {

@@ -3,6 +3,7 @@ import numpy as np
 import copy
 from collections import defaultdict
 import sys
+from IPython import embed
 
 def eval_cuhk03(distmat, q_pids, g_pids, q_camids, g_camids, max_rank, N=100):
     """Evaluation with cuhk03 metric
@@ -143,16 +144,18 @@ def eval_veri(distmat, q_pids, g_pids, q_camids, g_camids, max_rank):
     all_cmc = []
     all_AP = []
     num_valid_q = 0. # number of valid query
+    keep = np.ones((num_g,))
+    keep = keep>0
     for q_idx in range(num_q):
         # get query pid and camid
         q_pid = q_pids[q_idx]
-        q_camid = q_camids[q_idx]
+        #q_camid = q_camids[q_idx]
 
         # remove gallery samples that have the same pid and camid with query
         order = indices[q_idx]
-        remove = (g_pids[order] == q_pid) & (g_camids[order] == q_camid)
+        #remove = (g_pids[order] == q_pid) & (g_camids[order] == q_camid)
 #       print('remove shape',remove.shape)
-        keep = np.invert(remove)
+#        keep = np.invert(remove)
 #       print('keep shape',keep.shape)
         # compute cmc curve
         orig_cmc = matches[q_idx][keep] # binary vector, positions with value 1 are correct matches
@@ -181,7 +184,7 @@ def eval_veri(distmat, q_pids, g_pids, q_camids, g_camids, max_rank):
     all_cmc = np.asarray(all_cmc).astype(np.float32)
     all_cmc = all_cmc.sum(0) / num_valid_q
     mAP = np.mean(all_AP)
-
+#    embed()
     return all_cmc, mAP
 
 

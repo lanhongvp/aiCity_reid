@@ -4,6 +4,7 @@ import numpy as np
 
 import torch
 from torch.utils.data.sampler import Sampler
+from IPython import embed
 
 class RandomIdentitySampler(Sampler):
     """
@@ -38,3 +39,4 @@ class RandomIdentitySampler(Sampler):
 
     def __len__(self):
         return self.num_identities * self.num_instances
+#    embed()

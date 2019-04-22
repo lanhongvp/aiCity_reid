@@ -51,8 +51,12 @@ def dict_value_slice(ori_dict,st,ed):
         vid = item[0]
         vnames = item[1]
         tmp_name = []
-        for i in range(st,ed):
-            tmp_name.append(vnames[i])
+        if ed==-1:
+            for i in range(st,len(vnames)):
+                tmp_name.append(vnames[i])
+        else:
+            for i in range(st,ed):
+                tmp_name.append(vnames[i])
         slice_dict[vid] = tmp_name
     return slice_dict
 
@@ -102,6 +106,28 @@ def copy_ori2dst(ori_dict,ori_path,save_path):
                 os.mkdir(dst_path)
             copyfile(src_path, dst_path + '/' + timg)
 
+
+def ori2dst_split(ori_dict,ori_path,save_path):
+    """
+    copy ori folder to destination folder
+    :param ori_dict: original dict
+    :param ori_path: the original path 
+    :param save_path: the final path which is going to be saved
+    :return: none
+    """
+    if not os.path.isdir(save_path):
+        os.mkdir(save_path)
+
+    for item in ori_dict.items():
+        tvid = item[0]
+        timgs = item[1]
+        # print(timgs)
+        for timg in timgs:
+            src_path = ori_path + '/' + timg
+            dst_path = save_path
+            if not os.path.isdir(dst_path):
+                os.mkdir(dst_path)
+            copyfile(src_path, dst_path + '/'+tvid+'_'+timg)
 
 class AverageMeter(object):
     """Computes and stores the average and current value.

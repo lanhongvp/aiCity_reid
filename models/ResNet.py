@@ -6,6 +6,7 @@ from torch.nn import functional as F
 import torchvision
 
 from aligned.HorizontalMaxPool2D import HorizontalMaxPool2d
+from IPython import embed
 
 __all__ = ['ResNet50', 'ResNet101']
 
@@ -47,6 +48,7 @@ class ResNet50(nn.Module):
 # print('lf shape',lf.shape)
         #f = 1. * f / (torch.norm(f, 2, dim=-1, keepdim=True).expand_as(f) + 1e-12)
         if not self.training:
+            embed()
             return f,lf
         y = self.classifier(f)
         if self.loss == {'softmax'}:

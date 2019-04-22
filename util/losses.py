@@ -3,6 +3,7 @@ from aligned.local_dist import *
 
 import torch
 from torch import nn
+from IPython import embed
 
 """
 Shorthands for loss:
@@ -163,6 +164,7 @@ class TripletLossAlignedReID(nn.Module):
         y = torch.ones_like(dist_an)
         global_loss = self.ranking_loss(dist_an, dist_ap, y)
         local_loss = self.ranking_loss_local(local_dist_an,local_dist_ap, y)
+        #embed()
         if self.mutual:
             return global_loss+local_loss,dist
         return global_loss,local_loss
