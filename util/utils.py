@@ -13,6 +13,7 @@ from numpy import array,argmin
 import pickle
 import torch
 from shutil import copyfile
+from IPython import embed
 
 def mkdir_if_missing(directory):
     if not osp.exists(directory):
@@ -61,13 +62,13 @@ def dict_value_slice(ori_dict,st,ed):
     return slice_dict
 
 
-def write_pickle(download_path):
+def write_pickle_aicity(download_path):
     if not os.path.isdir(download_path):
         print('please change the download_path')
 
     train_label = download_path + '/train_label.csv'
     tnames = {}
-    tnames_p = open('tnames.pkl','wb')
+    tnames_p = open('aicity_train.pkl','wb')
 
     # for root, dirs, files in os.walk(train_path, topdown=True):
     with open(train_label,'r') as f:
@@ -83,29 +84,89 @@ def write_pickle(download_path):
         tnames_p.close()
         f.close()
 
+def write_pickle_veri(download_path,pickle_name):
+    # if not os.path.isdir(download_path):
+    #     print('please change the download_path')
 
-def copy_ori2dst(ori_dict,ori_path,save_path):
+    train_label = download_path
+    tnames = {}
+    tnames_p = open(pickle_name+'.pkl','wb')
+
+    # for root, dirs, files in os.walk(train_path, topdown=True):
+    with open(train_label,'r') as f:
+        for line in f.readlines():
+            line = line.strip('\n')
+            tname = line.split('_')
+            vid = tname[0]
+            timg = [line] 
+            if vid in tnames:
+                tnames[vid] += timg
+            else:
+                tnames[vid] = timg
+        pickle.dump(tnames,tnames_p)
+        tnames_p.close()
+        f.close()
+
+
+def merge_label(d1_dict,d2_dict):
+    """
+    merge two datasets dict
+    :param d1_dict: dataset1 dict
+    :param d2_dict: dataset2 path 
+    :return: merged dict
+    """
+    d1_id_cnt = len(d1_dict)
+    d2_id_cnt = len(d2_dict)
+    d1_items = d1_dict.items()
+    d2_items = d2_dict.items()
+    merge_dict = {}
+    cnt = 0
+    for key,value in d1_items:
+        cnt += 1
+        merge_dict[cnt] = value
+    for key,value in d2_items:
+        cnt += 1
+        merge_dict[cnt] = value
+
+    return merge_dict
+
+def copy_ori2dst(ori_dict,ori_path_d1,ori_path_d2,save_path,d1_id_cnt,d2_id_cnt):
     """
     copy ori folder to destination folder
     :param ori_dict: original dict
-    :param ori_path: the original path 
+    :param ori_path_d1: the original dataset1 path 
+    :param ori_path_d2: the original dataset2 path 
     :param save_path: the final path which is going to be saved
     :return: none
     """
     if not os.path.isdir(save_path):
         os.mkdir(save_path)
 
+    cnt = 1
     for item in ori_dict.items():
-        tvid = item[0]
+        tvid = str(item[0])
         timgs = item[1]
         # print(timgs)
-        for timg in timgs:
-            src_path = ori_path + '/' + timg
-            dst_path = save_path + '/' + tvid
-            if not os.path.isdir(dst_path):
-                os.mkdir(dst_path)
-            copyfile(src_path, dst_path + '/' + timg)
-
+        if cnt <= d1_id_cnt:
+            for timg in timgs:
+                src_path = ori_path_d1 + '/' + timg
+                dst_path = save_path
+                if not os.path.isdir(dst_path):
+                    os.mkdir(dst_path)
+                copyfile(src_path, dst_path + '/'+tvid+'_'+timg)
+        else:
+#            embed()
+            for timg in timgs:
+                src_path = ori_path_d2 + '/' + timg
+                dst_path = save_path
+                timg = timg.split('_')[2]
+                if not os.path.isdir(dst_path):
+                    os.mkdir(dst_path)
+                if os.path.exists(src_path):
+                    copyfile(src_path, dst_path + '/'+tvid+'_'+timg+'.jpg')
+                else:
+                    continue
+        cnt += 1
 
 def ori2dst_split(ori_dict,ori_path,save_path):
     """

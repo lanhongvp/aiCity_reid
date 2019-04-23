@@ -1,1 +1,1 @@
-CUDA_VISIBLE_DEVICES=1 python test_aicity.py  -a densePCB --test --height 256 --width 256 --result_dir densepcb_tr_lg --save-dir log -rf True --reranking --use_track_info --gpu-device 1 --resume log/checkpoint_ep60.pth.tar
+CUDA_VISIBLE_DEVICES=1 python test_aicity.py -d aiCityTest --test --height 256 --width 256 --reranking --use_track_info --gpu-device 1

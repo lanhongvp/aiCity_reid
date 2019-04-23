@@ -88,6 +88,8 @@ parser.add_argument('--stripes', type=int, default=4)
 parser.add_argument('--train_all',action='store_true',default=False)
 parser.add_argument('--use_pcb',action='store_true',default=False)
 
+parser.add_argument('--aligned',action='store_true',default=False)
+
 args = parser.parse_args()
 
 def main():
@@ -157,7 +159,7 @@ def main():
 
     print('len of galleryloader',len(galleryloader))
     print("Initializing model: {}".format(args.arch))
-    model = models.init_model(name=args.arch, num_classes=dataset.num_train_vids, num_stripes=args.stripes, share_conv=args.share_conv,use_pcb=args.use_pcb)
+    model = models.init_model(name=args.arch, num_classes=dataset.num_train_vids,loss={'softmax','metric'},aligned=args.aligned)
     print("Model size: {:.5f}M".format(sum(p.numel() for p in model.parameters())/1000000.0))
     print('Model ',model)
     print('num_classes',dataset.num_train_vids)
@@ -246,12 +248,12 @@ def train(epoch, model, criterion_class, criterion_metric, optimizer, trainloade
         data_time.update(time.time() - end)
 #        outputs, features, local_features = model(imgs)
         #embed()
-        if args.use_pcb:
-            outputs,gf_out,local_features,features = model(imgs)
+        if args.aligned:
+            outputs,features,local_features = model(imgs)
             #embed()
-        elif not args.use_pcb:
+        elif not args.aligned:
             # only use global feature to get the classifier results
-            outputs= model(imgs)
+            outputs,features= model(imgs)
         # print('outputs',(outputs.shape))
         # htri_only = False(default)
         if args.htri_only:
@@ -301,50 +303,6 @@ def train(epoch, model, criterion_class, criterion_metric, optimizer, trainloade
                    loss=losses,xent_loss=xent_losses, global_loss=global_losses, local_loss = local_losses))
 
 
-def extract_feature(model, inputs, requires_norm, vectorize, requires_grad=False,use_pcb=False):
-
-    # Move to model's device
-    #print('inputs',inputs.shape)
-    inputs = inputs.to(next(model.parameters()).device)
-
-    with torch.set_grad_enabled(requires_grad):
-        if use_pcb:
-            features,global_f = model(inputs)
-            size = features.shape
-            if requires_norm:
-        # [N, C*H]
-                features = features.view(size[0], -1)
-
-        # norm feature
-                fnorm = features.norm(p=2, dim=1)
-                features = features.div(fnorm.unsqueeze(dim=1))
-
-            if vectorize:
-                features = features.view(size[0], -1)
-            else:
-            # Back to [N, C, H=S]
-                features = features.view(size)
-            features = torch.cat((features,global_f),-1)
-            return features
-        elif not use_pcb:
-            features = model(inputs)
-            size = features.shape
-            if requires_norm:
-        # [N, C*H]
-                features = features.view(size[0], -1)
-
-        # norm feature
-                fnorm = features.norm(p=2, dim=1)
-                features = features.div(fnorm.unsqueeze(dim=1))
-
-            if vectorize:
-                features = features.view(size[0], -1)
-            else:
-            # Back to [N, C, H=S]
-                features = features.view(size)
-            return features
-
-
 def test(model, queryloader, galleryloader, use_gpu, ranks=[1, 5, 10, 20]):
     batch_time = AverageMeter()
 
@@ -356,23 +314,23 @@ def test(model, queryloader, galleryloader, use_gpu, ranks=[1, 5, 10, 20]):
             if use_gpu: imgs = imgs.cuda()
 
             end = time.time()
-            qf.append(extract_feature(
-                model, imgs, requires_norm=True, vectorize=True,use_pcb=args.use_pcb).cpu().data)
-            #_,local_features,features = model(imgs)
-            #print('lqf shape',local_features.shape)
-            #print('qf shape',features.shape)
+#            qf.append(extract_feature(
+#                model, imgs, requires_norm=True, vectorize=True,use_pcb=args.use_pcb).cpu().data)
+            features,local_features = model(imgs)
+#            print('lqf shape',local_features.shape)
+#            print('qf shape',features.shape)
             batch_time.update(time.time() - end)
             
-            #features = features.data.cpu()
-            #local_features = local_features.data.cpu()
-            #qf.append(features)
-            #lqf.append(local_features)
+            features = features.data.cpu()
+            local_features = local_features.data.cpu()
+            qf.append(features)
+            lqf.append(local_features)
             q_pids.extend(pids)
-            #q_camids.extend(camids)
+#            q_camids.extend(camids)
         qf = torch.cat(qf, 0)
-        #lqf = torch.cat(lqf,0)
+        lqf = torch.cat(lqf,0)
         print('qf shape',qf.shape)
-        #print('lqf shape',lqf.shape)
+        print('lqf shape',lqf.shape)
         q_pids = np.asarray(q_pids)
         #q_camids = np.asarray(q_camids)
 
@@ -385,15 +343,15 @@ def test(model, queryloader, galleryloader, use_gpu, ranks=[1, 5, 10, 20]):
 
             end = time.time()
             # features, local_features = model(imgs)
-            gf.append(extract_feature(
-               model, imgs, requires_norm=True, vectorize=True,use_pcb=args.use_pcb).cpu().data)
-            #_,local_features,features = model(imgs)
+#            gf.append(extract_feature(
+#               model, imgs, requires_norm=True, vectorize=True,use_pcb=args.use_pcb).cpu().data)
+            features,local_features = model(imgs)
             batch_time.update(time.time() - end)
 
-#            features = features.data.cpu()
-#            local_features = local_features.data.cpu()
-#            gf.append(features)
-#            lgf.append(local_features)
+            features = features.data.cpu()
+            local_features = local_features.data.cpu()
+            gf.append(features)
+            lgf.append(local_features)
             g_pids.extend(pids)
 #            g_camids.extend(camids)
         gf = torch.cat(gf, 0)

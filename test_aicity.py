@@ -238,18 +238,18 @@ def test(model, queryloader, galleryloader, use_gpu, dataset_q,dataset_g,track_i
             if use_gpu: imgs = imgs.cuda()
 
             end = time.time()
-            #_,local_features,features = model(imgs)
-            qf.append(extract_feature(
-               model, imgs, requires_norm=True, vectorize=True).cpu().data)
+            features,local_features = model(imgs)
+#            qf.append(extract_feature(
+#              model, imgs, requires_norm=True, vectorize=True).cpu().data)
             batch_time.update(time.time() - end)
 
-#            features = features.data.cpu()
-#           local_features = local_features.data.cpu()
-#           qf.append(features)
-#            lqf.append(local_features)
+            features = features.data.cpu()
+            local_features = local_features.data.cpu()
+            qf.append(features)
+            lqf.append(local_features)
         qf = torch.cat(qf, 0)
-#        lqf = torch.cat(lqf,0)
-#        print('lqf shape',lqf.shape)
+        lqf = torch.cat(lqf,0)
+        print('lqf shape',lqf.shape)
         print("Extracted features for query set, obtained {}-by-{} matrix".format(qf.size(0), qf.size(1)))
 
         gf, lgf, g_imgs = [], [], []
@@ -265,19 +265,19 @@ def test(model, queryloader, galleryloader, use_gpu, dataset_q,dataset_g,track_i
             if use_gpu: imgs = imgs.cuda()
 
             end = time.time()
-            #_,local_features,features = model(imgs)
-            gf.append(extract_feature(
-               model, imgs, requires_norm=True, vectorize=True).cpu().data)
+            features,local_features = model(imgs)
+#            gf.append(extract_feature(
+#model, imgs, requires_norm=True, vectorize=True).cpu().data)
 
-#            features = features.data.cpu()
-#            local_features = local_features.data.cpu()
-#            gf.append(features)
-#            lgf.append(local_features)
+            features = features.data.cpu()
+            local_features = local_features.data.cpu()
+            gf.append(features)
+            lgf.append(local_features)
 
         #embed()
         gf = torch.cat(gf, 0)
-#        lgf = torch.cat(lgf,0)
-#        print('lgf shape',lgf.shape)
+        lgf = torch.cat(lgf,0)
+        print('lgf shape',lgf.shape)
         gt_f,_ = track_info_average(track_id_tmp,gf,lgf)
         embed()
         print('len of gimgs',len(g_imgs))
