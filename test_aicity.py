@@ -156,8 +156,8 @@ def main():
     #embed()
     print('len of galleryloader',len(galleryloader))
     print("Initializing model: {}".format(args.arch))
-    model = models.init_model(name=args.arch, num_classes=dataset.num_train_vids, num_stripes=args.stripes, share_conv=args.share_conv, return_features=args.return_features,
-                                loss={'softmax','metric'}, aligned =True, use_gpu=use_gpu)
+    model = models.init_model(name=args.arch, num_classes=dataset.num_train_vids,
+                            loss={'softmax','metric'}, aligned =True, use_gpu=use_gpu)
     print("Model size: {:.5f}M".format(sum(p.numel() for p in model.parameters())/1000000.0))
     print('Model ',model)
     print('num_classes',dataset.num_train_vids)
@@ -191,35 +191,6 @@ def main():
             test(model, queryloader, galleryloader, use_gpu,dataset_q=dataset.query,dataset_g=dataset.gallery,rank=100)
         return 0
 
-
-def extract_feature(model, inputs, requires_norm, vectorize, requires_grad=False):
-
-    # Move to model's device
-    #print('inputs',inputs.shape)
-    inputs = inputs.to(next(model.parameters()).device)
-
-    with torch.set_grad_enabled(requires_grad):
-        logits,features,gf = model(inputs)
-#print('features type',type(features))
-#   print('features len',len(features))
-    size = features.shape
-
-    if requires_norm:
-        # [N, C*H]
-        features = features.view(size[0], -1)
-
-        # norm feature
-        fnorm = features.norm(p=2, dim=1)
-        features = features.div(fnorm.unsqueeze(dim=1))
-
-    if vectorize:
-        features = features.view(size[0], -1)
-    else:
-        # Back to [N, C, H=S]
-        features = features.view(size)
-    features = torch.cat((features,gf),1)
-    return features
-	
 	
 def test(model, queryloader, galleryloader, use_gpu, dataset_q,dataset_g,track_id_tmp=None,rank=100):
     batch_time = AverageMeter()
@@ -239,8 +210,6 @@ def test(model, queryloader, galleryloader, use_gpu, dataset_q,dataset_g,track_i
 
             end = time.time()
             features,local_features = model(imgs)
-#            qf.append(extract_feature(
-#              model, imgs, requires_norm=True, vectorize=True).cpu().data)
             batch_time.update(time.time() - end)
 
             features = features.data.cpu()
@@ -266,9 +235,6 @@ def test(model, queryloader, galleryloader, use_gpu, dataset_q,dataset_g,track_i
 
             end = time.time()
             features,local_features = model(imgs)
-#            gf.append(extract_feature(
-#model, imgs, requires_norm=True, vectorize=True).cpu().data)
-
             features = features.data.cpu()
             local_features = local_features.data.cpu()
             gf.append(features)
@@ -323,7 +289,7 @@ def test(model, queryloader, galleryloader, use_gpu, dataset_q,dataset_g,track_i
     print("==> Test aicity dataset and write to csv")
     test_rank_result = test_rank100_aicity(distmat,q_imgs,g_imgs,track_id_tmp,use_track_info=True)
     # test_rank_result is a dict, use pandas to convert 
-    embed()
+    # embed()
     test_rank_result_df = pd.DataFrame(list(test_rank_result.items()),columns=['query_ids','gallery_ids'])
     test_result_df = test_rank_result_df.sort_values('query_ids')
     # write to csvi

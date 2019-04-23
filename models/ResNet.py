@@ -43,9 +43,6 @@ class ResNet50(nn.Module):
 #        print('x size 1',x.size())
         x = F.avg_pool2d(x, x.size()[2:])
         f = x.view(x.size(0), -1)
-#       print('x shape 2',x.shape)
-#       print('x size 2',x.size())
-# print('lf shape',lf.shape)
         #f = 1. * f / (torch.norm(f, 2, dim=-1, keepdim=True).expand_as(f) + 1e-12)
         if not self.training:
 #            embed()
